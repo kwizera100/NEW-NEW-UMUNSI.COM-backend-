@@ -9,13 +9,19 @@ datasource db {
 
 model User {
   id           Int       @id @default(autoincrement())
+  firstName    String?   @map("first_name")
+  lastName     String?   @map("last_name")
   name         String
+  username     String    @unique
   email        String    @unique
   passwordHash String    @map("password_hash")
+  avatar       String?
+  profileUrl   String?   @map("profile_url")
   role         Role      @default(AUTHOR)
+  isVerified   Boolean   @default(false) @map("is_verified")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
-  articles     Article[]
+  posts        Post[]
 
   @@map("users")
 }
@@ -25,36 +31,48 @@ model Category {
   name        String
   slug        String    @unique
   description String?
-  color       String    @default("#DC2626")
+  color       String?
+  icon        String?
+  isActive    Boolean   @default(true) @map("is_active")
   createdAt   DateTime  @default(now()) @map("created_at")
-  articles    Article[]
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  posts       Post[]
 
   @@map("categories")
 }
 
-model Article {
-  id           Int       @id @default(autoincrement())
-  title        String
-  slug         String    @unique
-  excerpt      String
-  content      String    @db.Text
-  thumbnailUrl String?   @map("thumbnail_url")
-  imageUrl     String?   @map("image_url")
-  readTime     Int       @default(1) @map("read_time")
-  published    Boolean   @default(false)
-  publishedAt  DateTime? @map("published_at")
-  views        Int       @default(0)
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
-  categoryId   Int       @map("category_id")
-  authorId     Int       @map("author_id")
-  author       User      @relation(fields: [authorId], references: [id])
-  category     Category  @relation(fields: [categoryId], references: [id])
+model Post {
+  id              Int       @id @default(autoincrement())
+  title           String
+  slug            String    @unique
+  excerpt         String?
+  content         String    @db.Text
+  featuredImage   String?   @map("featured_image")
+  status          PostStatus @default(DRAFT)
+  isFeatured      Boolean   @default(false) @map("is_featured")
+  isPremium       Boolean   @default(false) @map("is_premium")
+  isPinned        Boolean   @default(false) @map("is_pinned")
+  allowComments   Boolean   @default(true) @map("allow_comments")
+  likeCount       Int       @default(0) @map("like_count")
+  commentCount    Int       @default(0) @map("comment_count")
+  shareCount      Int       @default(0) @map("share_count")
+  views           Int       @default(0)
+  tags            String[]  @default([])
+  metaTitle       String?   @map("meta_title")
+  metaDescription String?   @map("meta_description")
+  publishedAt     DateTime? @map("published_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  categoryId      Int       @map("category_id")
+  authorId        Int       @map("author_id")
+  author          User      @relation(fields: [authorId], references: [id])
+  category        Category  @relation(fields: [categoryId], references: [id])
 
   @@index([categoryId])
   @@index([authorId])
   @@index([publishedAt(sort: Desc)])
-  @@map("articles")
+  @@index([status])
+  @@map("posts")
 }
 
 model Setting {
@@ -85,4 +103,11 @@ enum Role {
   ADMIN
   EDITOR
   AUTHOR
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  SCHEDULED
+  ARCHIVED
 }

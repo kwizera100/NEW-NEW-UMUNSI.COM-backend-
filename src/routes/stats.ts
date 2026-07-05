@@ -7,13 +7,13 @@ const router = Router();
 // GET /api/stats — authenticated users only
 router.get('/', authenticate, async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const [articles, published, categories, users] = await Promise.all([
-      prisma.article.count(),
-      prisma.article.count({ where: { published: true } }),
+    const [posts, published, categories, users] = await Promise.all([
+      prisma.post.count(),
+      prisma.post.count({ where: { status: 'PUBLISHED' } }),
       prisma.category.count(),
       prisma.user.count(),
     ]);
-    res.json({ articles, published, draft: articles - published, categories, users });
+    res.json({ posts, published, draft: posts - published, categories, users });
   } catch {
     res.status(500).json({ error: 'Internal server error' });
   }

@@ -9,9 +9,13 @@ router.get('/', async (_req: Request, res: Response): Promise<void> => {
   try {
     const categories = await prisma.category.findMany({
       orderBy: { name: 'asc' },
-      include: { _count: { select: { articles: { where: { published: true } } } } },
+      include: { _count: { select: { posts: { where: { status: 'PUBLISHED' } } } } },
     });
-    res.json(categories);
+    res.json({
+      success: true,
+      categories,
+      pagination: { page: 1, limit: 100, total: categories.length, totalPages: 1 },
+    });
   } catch {
     res.status(500).json({ error: 'Failed to fetch categories' });
   }
@@ -22,7 +26,7 @@ router.get('/:slug', async (req: Request, res: Response): Promise<void> => {
   try {
     const category = await prisma.category.findUnique({
       where: { slug: req.params.slug },
-      include: { _count: { select: { articles: { where: { published: true } } } } },
+      include: { _count: { select: { posts: { where: { status: 'PUBLISHED' } } } } },
     });
     if (!category) {
       res.status(404).json({ error: 'Category not found' });
@@ -100,9 +104,9 @@ router.delete(
       return;
     }
     try {
-      const count = await prisma.article.count({ where: { categoryId: id } });
+      const count = await prisma.post.count({ where: { categoryId: id } });
       if (count > 0) {
-        res.status(409).json({ error: `Cannot delete: ${count} article(s) use this category` });
+        res.status(409).json({ error: `Cannot delete: ${count} post(s) use this category` });
         return;
       }
       await prisma.category.delete({ where: { id } });

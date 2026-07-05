@@ -6,7 +6,7 @@ import rateLimit from 'express-rate-limit';
 import path from 'path';
 
 import authRoutes from './routes/auth';
-import articlesRoutes from './routes/articles';
+import postsRoutes from './routes/posts';
 import categoriesRoutes from './routes/categories';
 import mediaRoutes from './routes/media';
 import usersRoutes from './routes/users';
@@ -90,7 +90,7 @@ app.get('/api', (_req, res) => {
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 app.use('/api/auth', authLimiter, authRoutes);
-app.use('/api/articles', articlesRoutes);
+app.use('/api/posts', postsRoutes);
 app.use('/api/categories', categoriesRoutes);
 app.use('/api/media', mediaRoutes);
 app.use('/api/users', usersRoutes);
