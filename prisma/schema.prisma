@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  name         String
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  role         Role      @default(AUTHOR)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  articles     Article[]
+
+  @@map("users")
+}
+
+model Category {
+  id          Int       @id @default(autoincrement())
+  name        String
+  slug        String    @unique
+  description String?
+  color       String    @default("#DC2626")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  articles    Article[]
+
+  @@map("categories")
+}
+
+model Article {
+  id           Int       @id @default(autoincrement())
+  title        String
+  slug         String    @unique
+  excerpt      String
+  content      String    @db.Text
+  thumbnailUrl String?   @map("thumbnail_url")
+  imageUrl     String?   @map("image_url")
+  readTime     Int       @default(1) @map("read_time")
+  published    Boolean   @default(false)
+  publishedAt  DateTime? @map("published_at")
+  views        Int       @default(0)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  categoryId   Int       @map("category_id")
+  authorId     Int       @map("author_id")
+  author       User      @relation(fields: [authorId], references: [id])
+  category     Category  @relation(fields: [categoryId], references: [id])
+
+  @@index([categoryId])
+  @@index([authorId])
+  @@index([publishedAt(sort: Desc)])
+  @@map("articles")
+}
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}
+
+model AdBanner {
+  id        Int      @id @default(autoincrement())
+  position  String   @unique
+  imageUrl  String   @map("image_url")
+  linkUrl   String?  @map("link_url")
+  altText   String?  @map("alt_text")
+  width     Int      @default(100)
+  height    Int      @default(100)
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("ad_banners")
+}
+
+enum Role {
+  ADMIN
+  EDITOR
+  AUTHOR
+}
