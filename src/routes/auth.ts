@@ -35,9 +35,16 @@ router.post(
         return;
       }
 
+      const username = email.split('@')[0];
+      const existingUsername = await prisma.user.findUnique({ where: { username } });
+      if (existingUsername) {
+        res.status(409).json({ error: 'Username already taken' });
+        return;
+      }
+
       const passwordHash = await bcrypt.hash(password, 12);
       const user = await prisma.user.create({
-        data: { name, email, passwordHash },
+        data: { name, username, email, passwordHash },
         select: { id: true, name: true, email: true, role: true },
       });
 
