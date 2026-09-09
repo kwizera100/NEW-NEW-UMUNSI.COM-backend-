@@ -19,6 +19,7 @@ router.get('/', authenticate, requireRole('ADMIN'), async (_req: AuthRequest, re
 });
 
 // GET /api/users/profile/:username - PUBLIC endpoint for author profile page
+// IMPORTANT: This must be defined BEFORE /:id to avoid route conflict
 router.get('/profile/:username', async (req: Request, res: Response): Promise<void> => {
   try {
     const username = req.params.username;
