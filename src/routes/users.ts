@@ -1,4 +1,4 @@
-import { Router, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { body, validationResult } from 'express-validator';
 import { prisma } from '../lib/prisma';
@@ -6,9 +6,9 @@ import { authenticate, requireRole, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
-const USER_SELECT = { id: true, name: true, firstName: true, lastName: true, username: true, email: true, role: true, avatar: true, isVerified: true, createdAt: true };
+const USER_SELECT = { id: true, name: true, firstName: true, lastName: true, username: true, email: true, role: true, avatar: true, profileUrl: true, isVerified: true, createdAt: true };
 
-// GET /api/users — Admin only
+// GET /api/users - Admin only
 router.get('/', authenticate, requireRole('ADMIN'), async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
     const users = await prisma.user.findMany({ select: USER_SELECT, orderBy: { createdAt: 'desc' } });
@@ -18,7 +18,25 @@ router.get('/', authenticate, requireRole('ADMIN'), async (_req: AuthRequest, re
   }
 });
 
-// POST /api/users — Admin only
+// GET /api/users/profile/:username - PUBLIC endpoint for author profile page
+router.get('/profile/:username', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const username = req.params.username;
+    const user = await prisma.user.findUnique({
+      where: { username },
+      select: { id: true, firstName: true, lastName: true, username: true, avatar: true, profileUrl: true, role: true, isVerified: true, createdAt: true },
+    });
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+    res.json({ success: true, data: user });
+  } catch {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/users - Admin only
 router.post(
   '/',
   authenticate,
@@ -73,32 +91,60 @@ router.post(
   }
 );
 
-// PUT /api/users/:id — Admin only
+// PUT /api/users/:id - Admin OR self (self can only update profile fields, not role)
 router.put(
   '/:id',
   authenticate,
-  requireRole('ADMIN'),
-  [body('role').optional().isIn(['ADMIN', 'EDITOR', 'AUTHOR'])],
   async (req: AuthRequest, res: Response): Promise<void> => {
     const id = parseInt(req.params.id);
-    const { role, name } = req.body as { role?: string; name?: string };
+    const body = req.body as any;
+
     try {
+      const existing = await prisma.user.findUnique({ where: { id } });
+      if (!existing) {
+        res.status(404).json({ error: 'User not found' });
+        return;
+      }
+
+      const isSelf = req.user?.id === id;
+      const isAdmin = req.user?.role === 'ADMIN';
+
+      if (!isSelf && !isAdmin) {
+        res.status(403).json({ error: 'Cannot update another user profile' });
+        return;
+      }
+
+      const data: any = {};
+
+      // Profile fields anyone can update on themselves
+      if (body.name !== undefined) data.name = body.name;
+      if (body.firstName !== undefined) data.firstName = body.firstName;
+      if (body.lastName !== undefined) data.lastName = body.lastName;
+      if (body.avatar !== undefined) data.avatar = body.avatar;
+      if (body.profileUrl !== undefined) data.profileUrl = body.profileUrl;
+
+      // Admin-only fields
+      if (isAdmin) {
+        if (body.role !== undefined) data.role = body.role;
+        if (body.email !== undefined) data.email = body.email;
+        if (body.username !== undefined) data.username = body.username;
+        if (body.isVerified !== undefined) data.isVerified = body.isVerified;
+      }
+
       const user = await prisma.user.update({
         where: { id },
-        data: {
-          ...(role ? { role: role as 'ADMIN' | 'EDITOR' | 'AUTHOR' } : {}),
-          ...(name ? { name } : {}),
-        },
+        data,
         select: USER_SELECT,
       });
       res.json(user);
-    } catch {
+    } catch (err: any) {
+      console.error('Update user error:', err.message);
       res.status(404).json({ error: 'User not found' });
     }
   }
 );
 
-// DELETE /api/users/:id — Admin only
+// DELETE /api/users/:id - Admin only
 router.delete('/:id', authenticate, requireRole('ADMIN'), async (req: AuthRequest, res: Response): Promise<void> => {
   const id = parseInt(req.params.id);
   if (req.user?.id === id) {
